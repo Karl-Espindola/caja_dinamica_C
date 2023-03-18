@@ -52,9 +52,7 @@ int hora;
 int min;
 int seg;
 
-const char rutaProductos[80] = "productos.bin";
-const char rutaVentas[80] = "ventas.bin";
-const char rutaTemporal[80] = "temporal.bin";
+
 
 int crearProducto();
 int ponerEnElcarrito();
@@ -70,6 +68,9 @@ void factura(int idVenta);
 void listarTodasLasVentas();
 
 void menuInventario();
+
+void liberarProductos();
+void liberarVentas();
 
 int main(){
     int opc = -1;
@@ -134,6 +135,8 @@ int main(){
 
     
     }
+    void liberarProductos();
+    void liberarVentas();
     return 0;
 }
 
@@ -677,6 +680,30 @@ void factura(int idVenta){ //Imprime la factura
 
 }
 
+void liberarProductos(){
+    struct Productos *reco = raizProducto;
+    struct Productos *bor;
+
+    while (reco != NULL)
+    {
+        bor = reco;
+        reco = reco->sig;
+        free(bor);
+    }
+    
+}
+void liberarVentas(){
+    struct Ventas *reco = raizVenta;
+    struct Ventas *bor;
+
+    while (reco != NULL)
+    {
+        bor = reco;
+        reco = reco->sig;
+        free(bor);
+    }
+    
+}
 
 
 
