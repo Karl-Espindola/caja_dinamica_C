@@ -14,18 +14,20 @@ typedef struct{
     int seg;
 }Fecha;
 
-typedef struct{
+struct Comprado{
     int id;
+    int idVenta;
     int idProducto;
     int cantidad;
     float precioTotal;
-}Comprado;
+    struct Comprado *sig;
+};
 
 struct Ventas{
     int id;
     Fecha tiempo;
     char comprador[80];
-    Comprado compra[100];
+    struct Comprado *listaCompra;
     int cantidadDeProductos;    //Numero de productos diferentes agregados a la compra
     float total;
     struct Ventas *sig;
@@ -42,8 +44,10 @@ struct Productos{
 
 struct Productos *raizProducto = NULL;
 struct Ventas *raizVenta = NULL;
+struct Comprado *raizComprado = NULL;
 struct Productos *fondo = NULL;
 struct Ventas *fondoVenta = NULL;
+struct Comprado *fondoComprado = NULL;
 
 int anio;
 int mes;
@@ -55,7 +59,7 @@ int seg;
 
 
 int crearProducto();
-int ponerEnElcarrito();
+int ponerEnElCarrito();
 struct Productos consultarProducto(int idProducto);
 int listarProductos();
 void editarProducto(int idProducto);
@@ -66,11 +70,12 @@ int verificarProuctosRepetidos(char nomProducto[80]);
 void tiempoActual();
 void factura(int idVenta);
 void listarTodasLasVentas();
-
+void nodoProductoComprado();
 void menuInventario();
 
 void liberarProductos();
 void liberarVentas();
+void liberarComprado();
 
 int main(){
     int opc = -1;
@@ -104,7 +109,7 @@ int main(){
         case 1:
             if(existeProducto == 1){
 
-                idVenta = ponerEnElcarrito();
+                idVenta = ponerEnElCarrito();
                 factura(idVenta);
             }
             else if(existeProducto == -1){
@@ -135,8 +140,9 @@ int main(){
 
     
     }
-    void liberarProductos();
-    void liberarVentas();
+    liberarProductos();
+    liberarVentas();
+    liberarComprado();
     return 0;
 }
 
@@ -209,8 +215,6 @@ void tiempoActual(){ // Obtenemos la hora y fecha actuales //
 }
 
 // ##########################################################
-
-
 
 
 
@@ -450,10 +454,11 @@ int verificarProuctosRepetidos(char nomProducto[80]){
 
 // ################################################################
 
-int ponerEnElcarrito(){
-    
+int ponerEnElCarrito(){
+
     struct Ventas *venta;
     venta = malloc(sizeof(struct Ventas));
+    venta->sig = NULL;
     struct Ventas *recoVenta;
 
     struct Productos producto;
@@ -479,7 +484,7 @@ int ponerEnElcarrito(){
     }
     /* Fin autoincrementable para las ventas */
     else{
-        venta->sig = NULL;
+
         fondoVenta->sig = venta;
         fondoVenta = venta;  
     }
@@ -498,11 +503,10 @@ int ponerEnElcarrito(){
     printf("\nIngrese el nombre del comprador: ");
     gets(nombreComprador);
     strcpy(venta->comprador, nombreComprador);
-    int i = 0;
+    
     int existe;
-    int cantidad = 0;
-    int acumulador;
-
+    int cantidadAnterior = 0;
+    struct Comprado *prev = NULL;
     while(opc1 != 2){
         
         system("cls");
@@ -513,25 +517,66 @@ int ponerEnElcarrito(){
         }
         else if(existe == 1){
             printf("\n\n----- Productos en el Carrito -----\n");
-            for (int x = 0; x < i; x++){
+
+            if(raizComprado != NULL){
+
+                struct Comprado *reco = raizComprado;
+                while(reco != NULL){
+                    if(reco->idVenta == venta->id){
+
+                        producto = consultarProducto(reco->idProducto);
+                        printf("\nProducto: %s cantidad: %i total: $%.2f", 
+                        producto.nombre, reco->cantidad, reco->precioTotal);
+                    }
+                    reco = reco->sig;
+                }
                 
-                producto = consultarProducto(venta->compra[x].idProducto);
-                printf("\nProducto: %s cantidad: %i total: $%.2f", 
-                producto.nombre, venta->compra[x].cantidad, venta->compra[x].precioTotal);
             }
+           
+
             printf("\n-------------------");
             printf("\n1: Elegir producto");
             printf("\n2: Finalizar compra");
             printf("\nOpcion: ");
             scanf("%i", &opc1);
-            
+                
             if(opc1 == 1){
 
+                
+                struct Comprado *productoComprado;
+                int codProducto;
                 system("cls");
                 listarProductos();
                 printf("\n\nIngrese el ID del producto: ");
-                scanf("%i", &venta->compra[i].idProducto);
-                producto = consultarProducto(venta->compra[i].idProducto);
+                scanf("%i", &codProducto);
+
+                int facturado = 0;
+                
+                if(raizComprado != NULL){
+
+                    struct Comprado *reco = raizComprado;
+                    while(reco != NULL){
+                        if(reco->idProducto == codProducto && reco->idVenta == venta->id){
+                            productoComprado = reco;
+                            facturado = 1;
+                            break;
+                        }
+                        reco = reco->sig;
+                    }
+                }
+                if(facturado != 1){
+                    nodoProductoComprado();
+                    productoComprado = fondoComprado;
+                    productoComprado->idVenta = venta->id;
+                    productoComprado->idProducto = codProducto;
+                    productoComprado->cantidad = 0;
+                    
+                }
+                if(prev != productoComprado && prev != NULL){
+                    cantidadAnterior = productoComprado->cantidad;
+                }
+
+                producto = consultarProducto(productoComprado->idProducto);
 
                 if(producto.id != -1 ){ //Producto existe
                     if(producto.cantidad <= 0){
@@ -550,88 +595,67 @@ int ponerEnElcarrito(){
 
                 
                 int cantidadStock = producto.cantidad;
+                int cantidad = 0;
                 do{
-                    int facturado;
-                    cantidadStock = producto.cantidad;
-                    for(int j = 0; j < i; j++){
-                        if(venta->compra[j].idProducto == producto.id){
-                            
-                            facturado = 1;
-                            printf("\nIngrese la cantidad: ");
-                            scanf("%i", &acumulador);
-                            
-                            if(acumulador > producto.cantidad){
-                                printf("\nNo tenemos esa cantidad. Puede llevar maximo %i unidades\n", producto.cantidad);
-                            }
-                            else{
-                                producto = restarStock(producto.id, acumulador);
-                                cantidad = venta->compra[j].cantidad;
-                                venta->compra[j].cantidad = (cantidad + acumulador);
-                                venta->compra[j].precioTotal = (producto.precio) * (venta->compra[j].cantidad);
-                            } 
-                        }
+                    printf("\nIngrese la cantidad: ");
+                    scanf("%i", &cantidad);
 
+                    if(cantidad > cantidadStock){
+                        printf("\nNo tenemos esa cantidad. Puede llevar maximo %i unidades\n", producto.cantidad);
                     }
-
-                    if(facturado != 1){
-                        acumulador = 0;
-                        cantidad = 0;
-                        
-                        printf("\nIngrese la cantidad: ");
-                        scanf("%i", &acumulador);
-                        venta->compra[i].cantidad = cantidad + acumulador;
-                        cantidad = venta->compra[i].cantidad;
-                        if(acumulador > producto.cantidad){
-                            printf("\nNo tenemos esa cantidad. Puede llevar maximo %i unidades\n", producto.cantidad);
-                        }
-                        else{
-                     
-                            producto = restarStock(producto.id, acumulador);
-                            venta->compra[i].precioTotal = (producto.precio) * (venta->compra[i].cantidad);
- 
-                        }
-                    }
-                    facturado = 0;
-                }
-                while(acumulador > cantidadStock );
-
-                venta->compra[i].precioTotal = (producto.precio) * (venta->compra[i].cantidad);
+                }while(cantidad > producto.cantidad);
                 
-                int z = i;
-                int repetido = 0;
-
-                for (int x = 0; x < z; x++){
-                    if(venta->compra[i].idProducto == venta->compra[x].idProducto ){
-                        repetido = 1;
-                        cantidad = 0;
-                        acumulador = 0;
-                        
-                    }
-                }
-                
-                if(repetido != 1){
-                    
-                    i = i + 1;
-                }
-                
+                restarStock(producto.id, cantidad);
+                productoComprado->cantidad = cantidadAnterior + cantidad;
+                cantidadAnterior = productoComprado->cantidad;
+                productoComprado->precioTotal = productoComprado->cantidad * producto.precio;
+                prev = productoComprado;
             }
-            else if(opc1 == 2){
-                break;
-            } 
-        }
+        } 
     }
     float suma = 0;
-    for(int x = 0; x < i; x++){
-        suma = suma + venta->compra[x].precioTotal;
+    if(raizComprado != NULL){
+
+        struct Comprado *reco = raizComprado;
+        while(reco != NULL){
+            if(reco->idVenta == venta->id){
+
+                suma = suma + reco->precioTotal;
+            }
+            reco = reco->sig;
+        }
     }
+
     venta->total = suma; // Precio total por todos los productos comprados
-    venta->cantidadDeProductos = i; //Numero de productos registrados en la compra. Este numero se usa despues para recorrer la lista de compras
     int id_venta = venta->id;
     
     
     return id_venta;
-    
+
 }
+
+
+void nodoProductoComprado(){
+
+    struct Comprado *nodo;
+    nodo = malloc(sizeof(struct Comprado));
+    nodo->sig = NULL;
+
+    if(raizComprado == NULL){
+        raizComprado = nodo;
+        fondoComprado = nodo;
+    }
+    else{
+        fondoComprado->sig = nodo;
+        fondoComprado = nodo;
+    }
+}
+
+
+
+
+
+
 
 void listarTodasLasVentas(){
     struct Ventas *recoV = raizVenta;
@@ -640,7 +664,6 @@ void listarTodasLasVentas(){
     if(recoV == NULL){
         system("cls");
         printf("\nNo hay ninguna\n");
-        getch();
     }
     system("cls");
     while(recoV != NULL){
@@ -668,13 +691,21 @@ void factura(int idVenta){ //Imprime la factura
     printf("\nID: %i  Nombre: %s Fecha %.2d/%.2d/%.2d  %.2d:%.2d:%.2d\n", reco->id, reco->comprador, 
     reco->tiempo.dia, reco->tiempo.mes, reco->tiempo.anio, reco->tiempo.hora, reco->tiempo.min, reco->tiempo.seg);
     
-    int i = reco->cantidadDeProductos;
-    for (int x = 0; x < i; x++){
-        
-        producto = consultarProducto(reco->compra[x].idProducto);
-        printf("\nProducto: %s cantidad: %i total: $%.2f", 
-        producto.nombre, reco->compra[x].cantidad, reco->compra[x].precioTotal);
+   
+    if(raizComprado != NULL){
+
+        struct Comprado *reco2 = raizComprado;
+        while(reco2 != NULL){
+            if(reco2->idVenta == idVenta){
+
+                producto = consultarProducto(reco2->idProducto);
+                printf("\nProducto: %s cantidad: %i total: $%.2f", 
+                producto.nombre, reco2->cantidad, reco2->precioTotal);
+            }
+            reco2 = reco2->sig;
+        }
     }
+ 
     printf("\nTOTAL:                             $%.2f\n", reco->total);
     printf("--------------------------------------------");
 
@@ -695,6 +726,18 @@ void liberarProductos(){
 void liberarVentas(){
     struct Ventas *reco = raizVenta;
     struct Ventas *bor;
+
+    while (reco != NULL)
+    {
+        bor = reco;
+        reco = reco->sig;
+        free(bor);
+    }
+    
+}
+void liberarComprado(){
+    struct Comprado *reco = raizComprado;
+    struct Comprado *bor;
 
     while (reco != NULL)
     {
