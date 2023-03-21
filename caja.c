@@ -232,7 +232,6 @@ int crearProducto(){
     producto->sig = NULL;
     
 
-
     /* ID autoincrementable para Productos */
 
 
@@ -243,19 +242,22 @@ int crearProducto(){
         id = reco->id;
         reco = reco->sig;
     }
+    
     if(id != 0){
         producto->id = id + 1;
         /* Fin de autoincrementable para Productos */
-
-        fondo->sig = producto;
-        fondo = producto;
 
         system("cls");
         fflush(stdin);
         printf("\nIngresa el nombre del producto: ");
         gets(nombreProducto);
+        
         existe = verificarProuctosRepetidos(nombreProducto);
         if(existe == 1){
+            // raizProducto = raizProducto->sig;
+            fondo->sig = NULL;
+            bor = producto;
+            free(bor);
             printf("\nEste producto ya existe");
             return 0;
         }
@@ -265,16 +267,22 @@ int crearProducto(){
         scanf("%i", &producto->cantidad);
         strcpy(producto->nombre, nombreProducto);
 
+
         if(producto->precio >= 0 && producto->cantidad >= 0){
-            
+        
+            fondo->sig = producto;
+            fondo = producto;
             printf("\nProducto Registrado\n");
         }
         else{
-            raizProducto = raizProducto->sig;
+            
+            fondo->sig = NULL;
             bor = producto;
             free(bor);
             printf("\nNo se admiten valores negativos. Registro cancelado\n");
         }
+        
+        
     }
     else{
         producto->id = 1;
@@ -284,12 +292,8 @@ int crearProducto(){
         fflush(stdin);
         printf("\nIngresa el nombre del producto: ");
         gets(nombreProducto);
-        existe = verificarProuctosRepetidos(nombreProducto);
-        if(existe == 1){
-            printf("\nEste producto ya existe");
-            getch();
-            return 0;
-        }
+
+       
         printf("\nIngresa el precio del producto: ");
         scanf("%i", &producto->precio);
         printf("\nIngresa el cantidad del producto: ");
@@ -300,12 +304,14 @@ int crearProducto(){
             printf("\nProducto Registrado\n");
         }
         else{
-            raizProducto = raizProducto->sig;
+            raizProducto = NULL;
             bor = producto;
             free(bor);
             printf("\nNo se admiten valores negativos. Registro cancelado\n");
         }
+            
     }
+
 
     return 0;
 }
@@ -314,7 +320,6 @@ int crearProducto(){
 
 int listarProductos(){
    
-    // struct Productos *producto;
     struct Productos *reco;
     reco = raizProducto;
     int existe;
@@ -322,7 +327,8 @@ int listarProductos(){
     while (reco != NULL)
     {
         existe = 1;
-        printf("\nID: %i  Producto: %s  Precio: $%i  Cantidad: %i", reco->id, reco->nombre, reco->precio, reco->cantidad);
+        printf("\nID: %i  Producto: %s  Precio: $%i  Cantidad: %i", 
+        reco->id, reco->nombre, reco->precio, reco->cantidad);
         reco = reco->sig;
     }
 
@@ -396,7 +402,7 @@ void editarProducto(int idProducto){
 void eliminarProducto(int idProducto){
 
     struct Productos *reco;
-    struct Productos *prev;
+    struct Productos *prev = NULL;
     struct Productos *bor;
     reco = raizProducto;
     int existe;
@@ -405,7 +411,15 @@ void eliminarProducto(int idProducto){
     {
         if(reco->id == idProducto){
             existe = 1;
-            prev->sig = reco->sig;
+            if(prev != NULL){
+                prev->sig = reco->sig;
+                if(fondo == reco){
+                    fondo = prev;
+                }
+            }
+            else{
+                raizProducto = reco->sig;
+            }
             bor = reco;
             free(bor);
             break;
